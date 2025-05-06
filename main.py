@@ -1,41 +1,33 @@
 import face_recognition
-import os
 import cv2
+import os
+import sys
+from load_save import load_save
+from face_detection import face_detection
 
-# === Chargement de la base de données ===
-chemin_base = "face"
-encodages_connus = []
-noms_connus = []
+if len(sys.argv) < 2:
+    print("Usage : python main.py [filepath]")
+    sys.exit(1)
 
-# Parcours des dossiers dans "face"
-for nom_personne in os.listdir(chemin_base):
-    chemin_personne = os.path.join(chemin_base, nom_personne)
-    
-    if not os.path.isdir(chemin_personne):
-        continue
+IMAGE_TEST = sys.argv[1]
 
-    for fichier in os.listdir(chemin_personne):
-        chemin_photo = os.path.join(chemin_personne, fichier)
-        image = face_recognition.load_image_file(chemin_photo)
-        encodages = face_recognition.face_encodings(image)
-        
-        if encodages:
-            encodages_connus.append(encodages[0])
-            noms_connus.append(nom_personne)
+BASE_DIR = "face"
+ENCODED_FILE = "encodages.pkl"
 
-# === Analyse de la photo à vérifier ===
-image_test = face_recognition.load_image_file("test/6.jpg")
-locations = face_recognition.face_locations(image_test)
-encodages_test = face_recognition.face_encodings(image_test, locations)
+if not os.path.isfile(IMAGE_TEST):
+    print(f"File not found : {IMAGE_TEST}")
+    sys.exit(1)
+if not os.path.isdir(BASE_DIR):
+    print(f"Base directory not found: {BASE_DIR}")
+    sys.exit(1)
 
-print("demmarage")
-# === Comparaison ===
-for (top, right, bottom, left), encoding in zip(locations, encodages_test):
-    correspondances = face_recognition.compare_faces(encodages_connus, encoding)
-    nom_detecte = "Inconnu"
+recreate = False
+if (sys.argv.count("-r") > 0 or sys.argv.count("--recreate") > 0):
+    recreate = True
+encodages_connus, noms_connus = load_save(ENCODED_FILE, BASE_DIR, recreate)
 
-    if True in correspondances:
-        index = correspondances.index(True)
-        nom_detecte = noms_connus[index]
+image = face_detection(IMAGE_TEST, encodages_connus, noms_connus)
 
-    print(f"Visage détecté : {nom_detecte}")
+cv2.imshow("Résultat", image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
